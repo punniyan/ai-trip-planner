@@ -49,14 +49,23 @@ export interface Place {
 
 export interface Weather {
   date?: string;
+
+  // Backend field names
+  temp_max?: number;
+  temp_min?: number;
+  weathercode?: number;
+
+  // Frontend-compatible field names
   temperature?: number;
   temperature_min?: number;
   temperature_max?: number;
+  weather_code?: number;
+
   precipitation_probability?: number;
   precipitation?: number;
   wind_speed?: number;
-  weather_code?: number;
   description?: string;
+
   latitude?: number;
   longitude?: number;
   source?: string;

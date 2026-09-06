@@ -66,7 +66,6 @@ except Exception:
 llm = ChatGoogleGenerativeAI(
     model=settings.gemini_model,
     google_api_key=settings.google_api_key,
-    temperature=0,
 )
 
 
@@ -1519,48 +1518,37 @@ async def _get_restaurants(
 # WEATHER
 # ============================================================
 
-def _get_weather_data(
+async def _get_weather_data(
     trip_data: dict,
     latitude: Optional[float] = None,
     longitude: Optional[float] = None,
 ) -> list:
-
     print("[agent] Getting weather...")
 
     if get_weather is None:
+        print("[agent] get_weather tool not available")
         return []
 
     if latitude is None or longitude is None:
+        print("[agent] Weather skipped: coordinates unavailable")
         return []
 
     try:
-
-        result = get_weather(
+        result = await get_weather(
             latitude=latitude,
             longitude=longitude,
-            start_date=trip_data.get(
-                "start_date"
-            ),
-            end_date=trip_data.get(
-                "end_date"
-            ),
+            start_date=trip_data.get("start_date"),
+            end_date=trip_data.get("end_date"),
         )
 
         if isinstance(result, list):
             return result
 
         if isinstance(result, dict):
-
-            if isinstance(
-                result.get("weather"),
-                list,
-            ):
+            if isinstance(result.get("weather"), list):
                 return result["weather"]
 
-            if isinstance(
-                result.get("daily"),
-                list,
-            ):
+            if isinstance(result.get("daily"), list):
                 return result["daily"]
 
             return [result]
@@ -1568,12 +1556,10 @@ def _get_weather_data(
         return []
 
     except Exception as exc:
-
         print(
             "[agent] Weather error:",
             repr(exc),
         )
-
         return []
 
 
@@ -2356,7 +2342,7 @@ async def process_trip_request(
     print("\n")
     print("[agent] STEP 10 - WEATHER")
 
-    weather = _get_weather_data(
+    weather = await _get_weather_data(
         trip_data,
         latitude=latitude,
         longitude=longitude,
