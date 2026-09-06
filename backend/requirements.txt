@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+pydantic-settings
+pymongo
+httpx
+
+langchain
+langchain-core
+langchain-community
+langchain-google-genai
+langchain-text-splitters
+
+faiss-cpu
