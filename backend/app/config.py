@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     geoapify_url: str = "https://api.geoapify.com/v2/places"
 
     # ============================================================
+    # STAYINGAPI
+    # Used for hotel data
+    # Sandbox / Demo inventory - No booking
+    # ============================================================
+
+    staying_api_key: str = ""
+    staying_api_url: str = ""
+
+    # ============================================================
     # WEATHER
     # ============================================================
     open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
@@ -28,11 +37,15 @@ class Settings(BaseSettings):
     currency_api_url: str = "https://api.frankfurter.app"
     exchange_rate_api_url: str = "https://open.er-api.com/v6/latest"
 
-    # ============================================================
-    # CIRIUM FLIGHTS
-    # ============================================================
-    cirium_api_key: str = ""
-    cirium_base_url: str = "https://api.sky.cirium.com/v1"
+    # ========================================================
+    # SERPAPI - GOOGLE FLIGHTS
+    # ========================================================
+
+    serpapi_api_key: str | None = None
+
+    serpapi_base_url: str = (
+        "https://serpapi.com/search.json"
+    )
 
     # ============================================================
     # GEOCODING

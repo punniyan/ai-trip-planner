@@ -9,13 +9,13 @@ from app.config import settings
 
 
 # ============================================================
-# CIRIUM CONFIGURATION
+# SERPAPI GOOGLE FLIGHTS CONFIGURATION
 # ============================================================
 
-CIRIUM_BASE_URL = getattr(
+SERPAPI_BASE_URL = getattr(
     settings,
-    "cirium_base_url",
-    "https://api.sky.cirium.com/v1",
+    "serpapi_base_url",
+    "https://serpapi.com/search.json",
 ).rstrip("/")
 
 
@@ -24,54 +24,143 @@ CIRIUM_BASE_URL = getattr(
 # ============================================================
 
 AIRPORT_CODES: dict[str, str] = {
+    # ========================================================
     # INDIA
+    # ========================================================
     "chennai": "MAA",
+    "madras": "MAA",
+
     "mumbai": "BOM",
+    "bombay": "BOM",
+
     "delhi": "DEL",
     "new delhi": "DEL",
+
     "bangalore": "BLR",
     "bengaluru": "BLR",
+
     "hyderabad": "HYD",
+
     "kochi": "COK",
     "cochin": "COK",
+
     "coimbatore": "CJB",
+
     "madurai": "IXM",
+
     "goa": "GOI",
+
     "trivandrum": "TRV",
     "thiruvananthapuram": "TRV",
-    "ahmedabad": "AMD",
-    "pune": "PNQ",
-    "kolkata": "CCU",
 
+    "ahmedabad": "AMD",
+
+    "pune": "PNQ",
+
+    "kolkata": "CCU",
+    "calcutta": "CCU",
+
+    "jaipur": "JAI",
+
+    "lucknow": "LKO",
+
+    "varanasi": "VNS",
+
+    "visakhapatnam": "VTZ",
+
+    "bhubaneswar": "BBI",
+
+    "tiruchirappalli": "TRZ",
+    "trichy": "TRZ",
+
+    # ========================================================
     # UAE
+    # ========================================================
     "dubai": "DXB",
+
     "abu dhabi": "AUH",
+
     "sharjah": "SHJ",
 
+    # ========================================================
     # ASIA
+    # ========================================================
     "singapore": "SIN",
-    "kuala lumpur": "KUL",
-    "bangkok": "BKK",
-    "phuket": "HKT",
-    "bali": "DPS",
 
+    "kuala lumpur": "KUL",
+
+    "bangkok": "BKK",
+
+    "phuket": "HKT",
+
+    "bali": "DPS",
+    "denpasar": "DPS",
+
+    "jakarta": "CGK",
+
+    "manila": "MNL",
+
+    "hong kong": "HKG",
+
+    "seoul": "ICN",
+
+    # ========================================================
     # EUROPE
+    # ========================================================
     "london": "LHR",
+
     "paris": "CDG",
+
     "frankfurt": "FRA",
+
     "amsterdam": "AMS",
+
     "rome": "FCO",
+
     "madrid": "MAD",
 
+    "barcelona": "BCN",
+
+    "zurich": "ZRH",
+
+    "istanbul": "IST",
+
+    # ========================================================
     # JAPAN
+    # ========================================================
     "tokyo": "NRT",
+
+    "tokyo haneda": "HND",
+
     "osaka": "KIX",
 
+    # ========================================================
     # USA
+    # ========================================================
     "new york": "JFK",
+
     "los angeles": "LAX",
+
     "san francisco": "SFO",
+
     "chicago": "ORD",
+
+    "miami": "MIA",
+
+    "boston": "BOS",
+
+    "washington": "IAD",
+
+    # ========================================================
+    # AUSTRALIA
+    # ========================================================
+    "sydney": "SYD",
+
+    "melbourne": "MEL",
+
+    "perth": "PER",
+
+    "brisbane": "BNE",
 }
 
 
@@ -155,478 +244,434 @@ def _safe_travelers(
 
 
 # ============================================================
-# AIRPORT OBJECT PARSER
+# FORMAT DURATION
 # ============================================================
 
-def _get_airport_code_from_object(
-    airport: Any,
+def _format_duration(
+    minutes: Any,
 ) -> str | None:
+    """
+    Convert minutes into human-readable duration.
 
-    if isinstance(airport, str):
-        return airport.upper()
+    Example:
+        240 -> 4h 0m
+        95  -> 1h 35m
+    """
+
+    if minutes is None:
+        return None
+
+    try:
+        total_minutes = int(minutes)
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+    if total_minutes < 0:
+        return None
+
+    hours = total_minutes // 60
+    remaining_minutes = total_minutes % 60
+
+    if hours > 0:
+        return f"{hours}h {remaining_minutes}m"
+
+    return f"{remaining_minutes}m"
+
+
+# ============================================================
+# GET AIRPORT INFORMATION
+# ============================================================
+
+def _get_airport_info(
+    airport: Any,
+) -> tuple[
+    str | None,
+    str | None,
+    str | None,
+]:
+    """
+    Extract airport:
+
+    Returns:
+        airport_name
+        airport_code
+        airport_time
+    """
 
     if not isinstance(
         airport,
         dict,
     ):
-        return None
+        return (
+            None,
+            None,
+            None,
+        )
+
+    name = airport.get("name")
 
     code = (
-        airport.get("iata")
+        airport.get("id")
+        or airport.get("iata")
         or airport.get("iataCode")
-        or airport.get("fsCode")
-        or airport.get("requestedCode")
         or airport.get("code")
     )
 
+    time = (
+        airport.get("time")
+        or airport.get("datetime")
+        or airport.get("date")
+    )
+
     if code:
-        return str(code).upper()
-
-    return None
-
-
-# ============================================================
-# TIME OBJECT PARSER
-# ============================================================
-
-def _get_time_from_object(
-    value: Any,
-) -> str | None:
-
-    if isinstance(value, str):
-        return value
-
-    if not isinstance(
-        value,
-        dict,
-    ):
-        return None
+        code = str(code).upper()
 
     return (
-        value.get("date")
-        or value.get("time")
-        or value.get("scheduled")
-        or value.get("scheduledTime")
-        or value.get("estimated")
-        or value.get("actual")
+        name,
+        code,
+        time,
     )
 
 
 # ============================================================
-# AIRLINE PARSER
+# GET FLIGHT SEGMENTS
 # ============================================================
 
-def _get_airline(
-    flight: dict[str, Any],
-) -> tuple[str | None, str | None]:
-
-    carrier = (
-        flight.get("carrier")
-        or flight.get("airline")
-        or {}
-    )
-
-    # Example:
-    # "carrier": "EK"
-    if isinstance(
-        carrier,
-        str,
-    ):
-        return carrier, None
-
-    if not isinstance(
-        carrier,
-        dict,
-    ):
-        return None, None
-
-    airline_name = (
-        carrier.get("name")
-        or carrier.get("nameOfficial")
-        or carrier.get("nameShort")
-    )
-
-    airline_code = (
-        carrier.get("iata")
-        or carrier.get("fsCode")
-        or carrier.get("icao")
-        or carrier.get("requestedCode")
-    )
-
-    if airline_code:
-        airline_code = str(
-            airline_code
-        ).upper()
-
-    return (
-        airline_name,
-        airline_code,
-    )
-
-
-# ============================================================
-# FLIGHT NUMBER PARSER
-# ============================================================
-
-def _get_flight_number(
-    flight: dict[str, Any],
-) -> str | None:
-
-    value = flight.get(
-        "flightNumber"
-    )
-
-    if isinstance(
-        value,
-        dict,
-    ):
-        return (
-            value.get("interpreted")
-            or value.get("requested")
-            or value.get("number")
-        )
-
-    if value is not None:
-        return str(value)
-
-    # Alternative structure
-    value = flight.get(
-        "flight"
-    )
-
-    if isinstance(
-        value,
-        dict,
-    ):
-        return (
-            value.get("iata")
-            or value.get("number")
-            or value.get("interpreted")
-            or value.get("requested")
-        )
-
-    if isinstance(
-        value,
-        str,
-    ):
-        return value
-
-    return None
-
-
-# ============================================================
-# DEPARTURE PARSER
-# ============================================================
-
-def _get_departure(
-    flight: dict[str, Any],
-) -> tuple[str | None, str | None]:
-
-    departure = (
-        flight.get("departureAirport")
-        or flight.get("departure")
-        or {}
-    )
-
-    if not isinstance(
-        departure,
-        dict,
-    ):
-        departure = {}
-
-    airport_code = (
-        _get_airport_code_from_object(
-            departure
-        )
-    )
-
-    departure_time = (
-        flight.get("departureTime")
-        or flight.get("scheduledDeparture")
-        or flight.get("departureDate")
-        or _get_time_from_object(
-            departure
-        )
-    )
-
-    return (
-        airport_code,
-        departure_time,
-    )
-
-
-# ============================================================
-# ARRIVAL PARSER
-# ============================================================
-
-def _get_arrival(
-    flight: dict[str, Any],
-) -> tuple[str | None, str | None]:
-
-    arrival = (
-        flight.get("arrivalAirport")
-        or flight.get("arrival")
-        or {}
-    )
-
-    if not isinstance(
-        arrival,
-        dict,
-    ):
-        arrival = {}
-
-    airport_code = (
-        _get_airport_code_from_object(
-            arrival
-        )
-    )
-
-    arrival_time = (
-        flight.get("arrivalTime")
-        or flight.get("scheduledArrival")
-        or flight.get("arrivalDate")
-        or _get_time_from_object(
-            arrival
-        )
-    )
-
-    return (
-        airport_code,
-        arrival_time,
-    )
-
-
-# ============================================================
-# EXTRACT FLIGHTS
-# ============================================================
-
-def _extract_flights(
-    data: dict[str, Any],
+def _get_segments(
+    itinerary: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """
-    Extract flight list from possible Cirium response structures.
+    Get individual flight segments from a SerpApi itinerary.
     """
 
-    # --------------------------------------------------------
-    # Direct arrays
-    # --------------------------------------------------------
+    flights = itinerary.get("flights")
 
-    for key in (
-        "scheduledFlights",
-        "flights",
-        "data",
-    ):
-
-        value = data.get(key)
-
-        if isinstance(
-            value,
-            list,
-        ):
-            return [
-                item
-                for item in value
-                if isinstance(
-                    item,
-                    dict,
-                )
-            ]
-
-        if isinstance(
-            value,
-            dict,
-        ):
-
-            nested = _extract_flights(
-                value
-            )
-
-            if nested:
-                return nested
-
-    # --------------------------------------------------------
-    # Singular scheduledFlight
-    # --------------------------------------------------------
-
-    scheduled_flight = data.get(
-        "scheduledFlight"
-    )
-
-    if isinstance(
-        scheduled_flight,
+    if not isinstance(
+        flights,
         list,
     ):
-        return [
-            item
-            for item in scheduled_flight
-            if isinstance(
-                item,
-                dict,
-            )
-        ]
+        return []
 
-    if isinstance(
-        scheduled_flight,
-        dict,
-    ):
-        return [
-            scheduled_flight
-        ]
-
-    # --------------------------------------------------------
-    # Nested response/result
-    # --------------------------------------------------------
-
-    for key in (
-        "response",
-        "results",
-        "request",
-    ):
-
-        nested = data.get(key)
-
+    return [
+        item
+        for item in flights
         if isinstance(
-            nested,
+            item,
             dict,
-        ):
-
-            result = _extract_flights(
-                nested
-            )
-
-            if result:
-                return result
-
-        elif isinstance(
-            nested,
-            list,
-        ):
-
-            return [
-                item
-                for item in nested
-                if isinstance(
-                    item,
-                    dict,
-                )
-            ]
-
-    return []
+        )
+    ]
 
 
 # ============================================================
-# NORMALIZE FLIGHT
+# NORMALIZE SERPAPI FLIGHT
 # ============================================================
 
 def _normalize_flight(
-    flight: dict[str, Any],
+    itinerary: dict[str, Any],
     travelers: int,
     origin_code: str,
     destination_code: str,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
+    """
+    Convert SerpApi Google Flights itinerary
+    into the application's existing flight structure.
+    """
 
-    airline_name, airline_code = (
-        _get_airline(
-            flight
+    segments = _get_segments(
+        itinerary
+    )
+
+    if not segments:
+        return None
+
+    # ========================================================
+    # FIRST SEGMENT
+    # ========================================================
+
+    first_segment = segments[0]
+
+    # ========================================================
+    # LAST SEGMENT
+    # ========================================================
+
+    last_segment = segments[-1]
+
+    # ========================================================
+    # DEPARTURE
+    # ========================================================
+
+    departure_name = None
+    departure_airport = origin_code
+    departure_time = None
+
+    (
+        departure_name,
+        parsed_departure_code,
+        departure_time,
+    ) = _get_airport_info(
+        first_segment.get(
+            "departure_airport"
         )
     )
 
-    flight_number = (
-        _get_flight_number(
-            flight
+    if parsed_departure_code:
+        departure_airport = parsed_departure_code
+
+    # ========================================================
+    # ARRIVAL
+    # ========================================================
+
+    arrival_name = None
+    arrival_airport = destination_code
+    arrival_time = None
+
+    (
+        arrival_name,
+        parsed_arrival_code,
+        arrival_time,
+    ) = _get_airport_info(
+        last_segment.get(
+            "arrival_airport"
         )
     )
 
-    departure_airport, departure_time = (
-        _get_departure(
-            flight
-        )
-    )
+    if parsed_arrival_code:
+        arrival_airport = parsed_arrival_code
 
-    arrival_airport, arrival_time = (
-        _get_arrival(
-            flight
-        )
-    )
+    # ========================================================
+    # AIRLINE
+    # ========================================================
 
-    # --------------------------------------------------------
-    # Route fallback
-    # --------------------------------------------------------
+    airlines: list[str] = []
 
-    if not departure_airport:
-        departure_airport = origin_code
-
-    if not arrival_airport:
-        arrival_airport = destination_code
-
-    # --------------------------------------------------------
-    # Normalize airport codes
-    # --------------------------------------------------------
-
-    departure_airport = (
-        departure_airport.upper()
-        if departure_airport
-        else origin_code
-    )
-
-    arrival_airport = (
-        arrival_airport.upper()
-        if arrival_airport
-        else destination_code
-    )
-
-    # --------------------------------------------------------
-    # Full flight number
-    # --------------------------------------------------------
-
-    full_flight_number = flight_number
-
-    if (
-        airline_code
-        and flight_number
-        and not str(
-            flight_number
-        ).upper().startswith(
-            str(
-                airline_code
-            ).upper()
-        )
-    ):
-        full_flight_number = (
-            f"{airline_code}"
-            f"{flight_number}"
+    for segment in segments:
+        airline = segment.get(
+            "airline"
         )
 
-    # --------------------------------------------------------
-    # Status
-    # --------------------------------------------------------
+        if airline:
+            airline = str(airline)
 
-    status = (
-        flight.get("status")
-        or "scheduled"
+            if airline not in airlines:
+                airlines.append(
+                    airline
+                )
+
+    airline_name = (
+        ", ".join(airlines)
+        if airlines
+        else "Unknown Airline"
     )
 
-    if isinstance(
-        status,
-        dict,
-    ):
-        status = (
-            status.get("status")
-            or status.get("name")
-            or "scheduled"
+    # ========================================================
+    # FLIGHT NUMBERS
+    # ========================================================
+
+    flight_numbers: list[str] = []
+
+    for segment in segments:
+        flight_number = segment.get(
+            "flight_number"
         )
 
-    # --------------------------------------------------------
-    # Normalized result
-    # --------------------------------------------------------
+        if flight_number:
+            flight_number = str(
+                flight_number
+            )
+
+            if flight_number not in flight_numbers:
+                flight_numbers.append(
+                    flight_number
+                )
+
+    flight_number_value = (
+        ", ".join(flight_numbers)
+        if flight_numbers
+        else None
+    )
+
+    # ========================================================
+    # DURATION
+    # ========================================================
+
+    total_duration = itinerary.get(
+        "total_duration"
+    )
+
+    if total_duration is None:
+        durations = []
+
+        for segment in segments:
+            duration = segment.get(
+                "duration"
+            )
+
+            if duration is not None:
+                try:
+                    durations.append(
+                        int(duration)
+                    )
+
+                except (
+                    TypeError,
+                    ValueError,
+                ):
+                    pass
+
+        if durations:
+            total_duration = sum(
+                durations
+            )
+
+    duration_text = _format_duration(
+        total_duration
+    )
+
+    # ========================================================
+    # PRICE
+    # ========================================================
+
+    price = itinerary.get(
+        "price"
+    )
+
+    if price is not None:
+        try:
+            price = float(price)
+
+            if price.is_integer():
+                price = int(price)
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            price = None
+
+    # ========================================================
+    # CURRENCY
+    # ========================================================
+
+    currency = "INR"
+
+    # ========================================================
+    # TRAVEL CLASS
+    # ========================================================
+
+    travel_class = None
+
+    for segment in segments:
+        value = segment.get(
+            "travel_class"
+        )
+
+        if value:
+            travel_class = str(
+                value
+            )
+            break
+
+    # ========================================================
+    # AIRCRAFT
+    # ========================================================
+
+    aircraft = None
+
+    aircraft_values: list[str] = []
+
+    for segment in segments:
+        airplane = segment.get(
+            "airplane"
+        )
+
+        if airplane:
+            airplane = str(
+                airplane
+            )
+
+            if airplane not in aircraft_values:
+                aircraft_values.append(
+                    airplane
+                )
+
+    if aircraft_values:
+        aircraft = ", ".join(
+            aircraft_values
+        )
+
+    # ========================================================
+    # AIRLINE LOGO
+    # ========================================================
+
+    airline_logo = None
+
+    for segment in segments:
+        logo = segment.get(
+            "airline_logo"
+        )
+
+        if logo:
+            airline_logo = str(
+                logo
+            )
+            break
+
+    # ========================================================
+    # STOPS
+    # ========================================================
+
+    stops = max(
+        0,
+        len(segments) - 1,
+    )
+
+    if stops == 0:
+        stops_text = "Nonstop"
+    elif stops == 1:
+        stops_text = "1 stop"
+    else:
+        stops_text = f"{stops} stops"
+
+    # ========================================================
+    # BOOKING TOKEN
+    # ========================================================
+
+    booking_token = itinerary.get(
+        "booking_token"
+    )
+
+    # ========================================================
+    # DEPARTURE TOKEN
+    # ========================================================
+
+    departure_token = itinerary.get(
+        "departure_token"
+    )
+
+    # ========================================================
+    # PRICE STATUS
+    # ========================================================
+
+    if price is not None:
+        price_status = "available"
+    else:
+        price_status = "not_available"
+
+    # ========================================================
+    # FINAL NORMALIZED OBJECT
+    # ========================================================
 
     return {
-        "flight_number": full_flight_number,
-        "airline": (
-            airline_name
-            or "Unknown Airline"
-        ),
-        "airline_code": airline_code,
+        # Existing application fields
+        "flight_number": flight_number_value,
+
+        "airline": airline_name,
+
+        "airline_code": None,
 
         "departure_airport": (
             departure_airport
@@ -644,17 +689,54 @@ def _normalize_flight(
             arrival_time
         ),
 
-        "status": status,
+        "status": "scheduled",
 
-        # Cirium Schedules API provides
-        # flight schedule information.
-        # It does not provide ticket fare here.
-        "price": None,
-        "currency": "INR",
+        "price": price,
+
+        "currency": currency,
+
         "travelers": travelers,
 
-        "source": "cirium",
-        "price_status": "not_available",
+        "source": "serpapi_google_flights",
+
+        "price_status": price_status,
+
+        # Additional useful fields
+        "departure_airport_name": (
+            departure_name
+        ),
+
+        "arrival_airport_name": (
+            arrival_name
+        ),
+
+        "duration": (
+            total_duration
+        ),
+
+        "duration_text": (
+            duration_text
+        ),
+
+        "stops": stops,
+
+        "stops_text": stops_text,
+
+        "travel_class": (
+            travel_class
+        ),
+
+        "aircraft": aircraft,
+
+        "airline_logo": airline_logo,
+
+        "booking_token": (
+            booking_token
+        ),
+
+        "departure_token": (
+            departure_token
+        ),
     }
 
 
@@ -668,24 +750,38 @@ async def search_flights(
     start_date: str | None = None,
     travelers: int = 1,
     departure_date: str | None = None,
+    return_date: str | None = None,
 ) -> list[dict[str, Any]]:
+    """
+    Search Google Flights through SerpApi.
+
+    Compatible with the existing application interface.
+
+    Example:
+
+        await search_flights(
+            origin="Chennai",
+            destination="Dubai",
+            start_date="2026-09-16",
+            travelers=1,
+        )
+    """
 
     # ========================================================
-    # CIRIUM API KEY
+    # SERPAPI API KEY
     # ========================================================
 
     api_key = getattr(
         settings,
-        "cirium_api_key",
+        "serpapi_api_key",
         None,
     )
 
     if not api_key:
         print(
-            "[cirium] ERROR: "
-            "CIRIUM_API_KEY is missing."
+            "[serpapi] ERROR: "
+            "SERPAPI_API_KEY is missing."
         )
-
         return []
 
     api_key = str(
@@ -694,10 +790,9 @@ async def search_flights(
 
     if not api_key:
         print(
-            "[cirium] ERROR: "
-            "CIRIUM_API_KEY is empty."
+            "[serpapi] ERROR: "
+            "SERPAPI_API_KEY is empty."
         )
-
         return []
 
     # ========================================================
@@ -714,12 +809,10 @@ async def search_flights(
     )
 
     if not requested_date:
-
         print(
-            "[cirium] ERROR: "
+            "[serpapi] ERROR: "
             "Valid departure date is required."
         )
-
         return []
 
     # ========================================================
@@ -743,22 +836,18 @@ async def search_flights(
     )
 
     if not origin_code:
-
         print(
-            "[cirium] ERROR: "
+            "[serpapi] ERROR: "
             f"Unknown origin airport: {origin}"
         )
-
         return []
 
     if not destination_code:
-
         print(
-            "[cirium] ERROR: "
+            "[serpapi] ERROR: "
             f"Unknown destination airport: "
             f"{destination}"
         )
-
         return []
 
     # ========================================================
@@ -766,48 +855,62 @@ async def search_flights(
     # ========================================================
 
     if origin_code == destination_code:
-
         print(
-            "[cirium] ERROR: "
+            "[serpapi] ERROR: "
             "Origin and destination are identical."
         )
-
         return []
 
     # ========================================================
-    # CIRIUM SCHEDULE ROUTE ENDPOINT
+    # RETURN DATE
     # ========================================================
 
-    url = (
-        f"{CIRIUM_BASE_URL}"
-        f"/schedules"
-        f"/departure-airport/{origin_code}"
-        f"/arrival-airport/{destination_code}"
-        f"/departure-date/{requested_date}"
+    requested_return_date = _normalize_date(
+        return_date
     )
 
     # ========================================================
-    # QUERY PARAMETERS
+    # FLIGHT TYPE
     # ========================================================
 
-    params = {
-        "codeType": "IATA",
-        "extendedOptions": (
-            "useInlinedReferences,"
-            "includeDirects,"
-            "includeNewFields,"
-            "languageCode:en"
-        ),
+    if requested_return_date:
+        flight_type = "1"
+    else:
+        flight_type = "2"
+
+    # ========================================================
+    # SERPAPI PARAMETERS
+    # ========================================================
+
+    params: dict[str, Any] = {
+        "engine": "google_flights",
+
+        "api_key": api_key,
+
+        "departure_id": origin_code,
+
+        "arrival_id": destination_code,
+
+        "type": flight_type,
+
+        "outbound_date": requested_date,
+
+        "currency": "INR",
+
+        "hl": "en",
+
+        "gl": "in",
+
+        "adults": travelers_value,
+
+        # Keep false for normal/faster POC searches.
+        "deep_search": "false",
     }
 
-    # ========================================================
-    # HEADERS
-    # ========================================================
-
-    headers = {
-        "Accept": "application/json",
-        "Authorization": api_key,
-    }
+    if requested_return_date:
+        params["return_date"] = (
+            requested_return_date
+        )
 
     # ========================================================
     # DEBUG
@@ -816,45 +919,50 @@ async def search_flights(
     print("=" * 70)
 
     print(
-        "[cirium] FLIGHT SCHEDULE SEARCH"
+        "[serpapi] GOOGLE FLIGHTS SEARCH"
     )
 
     print(
-        "[cirium] Origin:",
+        "[serpapi] Origin:",
         origin,
         "=>",
         origin_code,
     )
 
     print(
-        "[cirium] Destination:",
+        "[serpapi] Destination:",
         destination,
         "=>",
         destination_code,
     )
 
     print(
-        "[cirium] Departure date:",
+        "[serpapi] Departure date:",
         requested_date,
     )
 
     print(
-        "[cirium] Travelers:",
+        "[serpapi] Return date:",
+        requested_return_date,
+    )
+
+    print(
+        "[serpapi] Travelers:",
         travelers_value,
     )
 
     print(
-        "[cirium] Base URL:",
-        CIRIUM_BASE_URL,
+        "[serpapi] Currency:",
+        "INR",
     )
 
     print(
-        "[cirium] Endpoint:",
-        url,
+        "[serpapi] Base URL:",
+        SERPAPI_BASE_URL,
     )
 
     print(
-        "[cirium] API key configured:",
+        "[serpapi] API key configured:",
         bool(api_key),
     )
 
@@ -865,10 +973,9 @@ async def search_flights(
     # ========================================================
 
     try:
-
         timeout = httpx.Timeout(
             connect=10.0,
-            read=30.0,
+            read=60.0,
             write=10.0,
             pool=10.0,
         )
@@ -879,13 +986,12 @@ async def search_flights(
         ) as client:
 
             response = await client.get(
-                url,
-                headers=headers,
+                SERPAPI_BASE_URL,
                 params=params,
             )
 
         print(
-            "[cirium] HTTP status:",
+            "[serpapi] HTTP status:",
             response.status_code,
         )
 
@@ -896,7 +1002,7 @@ async def search_flights(
         if response.status_code == 200:
 
             print(
-                "[cirium] API request successful."
+                "[serpapi] API request successful."
             )
 
         # ====================================================
@@ -906,12 +1012,12 @@ async def search_flights(
         elif response.status_code == 400:
 
             print(
-                "[cirium] ERROR 400: "
+                "[serpapi] ERROR 400: "
                 "Invalid request."
             )
 
             print(
-                "[cirium] Response:",
+                "[serpapi] Response:",
                 response.text[:3000],
             )
 
@@ -924,12 +1030,12 @@ async def search_flights(
         elif response.status_code == 401:
 
             print(
-                "[cirium] ERROR 401: "
+                "[serpapi] ERROR 401: "
                 "Invalid or missing API key."
             )
 
             print(
-                "[cirium] Response:",
+                "[serpapi] Response:",
                 response.text[:3000],
             )
 
@@ -942,30 +1048,17 @@ async def search_flights(
         elif response.status_code == 403:
 
             print(
-                "[cirium] ERROR 403: "
+                "[serpapi] ERROR 403: "
                 "Request is forbidden."
             )
 
             print(
-                "[cirium] This can mean:"
+                "[serpapi] Check your SerpApi "
+                "subscription/quota."
             )
 
             print(
-                "  - API key is authenticated "
-                "but endpoint is not enabled."
-            )
-
-            print(
-                "  - Cirium plan does not allow "
-                "scheduled flights by route."
-            )
-
-            print(
-                "  - API quota was exceeded."
-            )
-
-            print(
-                "[cirium] Response:",
+                "[serpapi] Response:",
                 response.text[:3000],
             )
 
@@ -978,30 +1071,12 @@ async def search_flights(
         elif response.status_code == 404:
 
             print(
-                "[cirium] ERROR 404: "
-                "Endpoint or resource not found."
+                "[serpapi] ERROR 404: "
+                "SerpApi endpoint not found."
             )
 
             print(
-                "[cirium] Response:",
-                response.text[:3000],
-            )
-
-            return []
-
-        # ====================================================
-        # NOT ACCEPTABLE
-        # ====================================================
-
-        elif response.status_code == 406:
-
-            print(
-                "[cirium] ERROR 406: "
-                "Unsupported response format."
-            )
-
-            print(
-                "[cirium] Response:",
+                "[serpapi] Response:",
                 response.text[:3000],
             )
 
@@ -1014,12 +1089,16 @@ async def search_flights(
         elif response.status_code == 429:
 
             print(
-                "[cirium] ERROR 429: "
+                "[serpapi] ERROR 429: "
                 "Rate limit exceeded."
             )
 
             print(
-                "[cirium] Response:",
+                "[serpapi] Check your SerpApi quota."
+            )
+
+            print(
+                "[serpapi] Response:",
                 response.text[:3000],
             )
 
@@ -1032,16 +1111,16 @@ async def search_flights(
         elif response.status_code >= 500:
 
             print(
-                "[cirium] ERROR:",
+                "[serpapi] ERROR:",
                 response.status_code,
             )
 
             print(
-                "[cirium] Cirium server error."
+                "[serpapi] SerpApi server error."
             )
 
             print(
-                "[cirium] Response:",
+                "[serpapi] Response:",
                 response.text[:3000],
             )
 
@@ -1054,12 +1133,12 @@ async def search_flights(
         else:
 
             print(
-                "[cirium] ERROR:",
+                "[serpapi] ERROR:",
                 response.status_code,
             )
 
             print(
-                "[cirium] Response:",
+                "[serpapi] Response:",
                 response.text[:3000],
             )
 
@@ -1072,8 +1151,8 @@ async def search_flights(
     except httpx.TimeoutException:
 
         print(
-            "[cirium] ERROR: "
-            "Cirium request timed out."
+            "[serpapi] ERROR: "
+            "SerpApi request timed out."
         )
 
         return []
@@ -1085,7 +1164,7 @@ async def search_flights(
     except httpx.HTTPError as error:
 
         print(
-            "[cirium] HTTP error:",
+            "[serpapi] HTTP error:",
             repr(error),
         )
 
@@ -1098,7 +1177,7 @@ async def search_flights(
     except Exception as error:
 
         print(
-            "[cirium] Unexpected error:",
+            "[serpapi] Unexpected error:",
             repr(error),
         )
 
@@ -1115,12 +1194,12 @@ async def search_flights(
     except ValueError:
 
         print(
-            "[cirium] ERROR: "
+            "[serpapi] ERROR: "
             "Response is not valid JSON."
         )
 
         print(
-            "[cirium] Response:",
+            "[serpapi] Response:",
             response.text[:3000],
         )
 
@@ -1136,7 +1215,7 @@ async def search_flights(
     ):
 
         print(
-            "[cirium] ERROR: "
+            "[serpapi] ERROR: "
             "Unexpected response format."
         )
 
@@ -1147,7 +1226,7 @@ async def search_flights(
     # ========================================================
 
     print(
-        "[cirium] Response keys:",
+        "[serpapi] Response keys:",
         list(
             data.keys()
         ),
@@ -1160,22 +1239,82 @@ async def search_flights(
     if data.get("error"):
 
         print(
-            "[cirium] API error:",
+            "[serpapi] API error:",
             data.get("error"),
         )
 
         return []
 
     # ========================================================
-    # EXTRACT RAW FLIGHTS
+    # GET BEST FLIGHTS
     # ========================================================
 
-    raw_flights = _extract_flights(
-        data
+    best_flights = data.get(
+        "best_flights",
+        [],
+    )
+
+    if not isinstance(
+        best_flights,
+        list,
+    ):
+        best_flights = []
+
+    # ========================================================
+    # GET OTHER FLIGHTS
+    # ========================================================
+
+    other_flights = data.get(
+        "other_flights",
+        [],
+    )
+
+    if not isinstance(
+        other_flights,
+        list,
+    ):
+        other_flights = []
+
+    # ========================================================
+    # COMBINE RESULTS
+    # ========================================================
+
+    raw_flights: list[
+        dict[str, Any]
+    ] = []
+
+    for item in best_flights:
+
+        if isinstance(
+            item,
+            dict,
+        ):
+            raw_flights.append(
+                item
+            )
+
+    for item in other_flights:
+
+        if isinstance(
+            item,
+            dict,
+        ):
+            raw_flights.append(
+                item
+            )
+
+    print(
+        "[serpapi] Best flights:",
+        len(best_flights),
     )
 
     print(
-        "[cirium] Raw flight count:",
+        "[serpapi] Other flights:",
+        len(other_flights),
+    )
+
+    print(
+        "[serpapi] Total itineraries:",
         len(raw_flights),
     )
 
@@ -1189,17 +1328,20 @@ async def search_flights(
 
     seen: set[str] = set()
 
-    for flight in raw_flights:
+    for itinerary in raw_flights:
 
         normalized = _normalize_flight(
-            flight=flight,
+            itinerary=itinerary,
             travelers=travelers_value,
             origin_code=origin_code,
             destination_code=destination_code,
         )
 
+        if not normalized:
+            continue
+
         # ----------------------------------------------------
-        # Ignore completely invalid records
+        # Ignore invalid records
         # ----------------------------------------------------
 
         if not normalized.get(
@@ -1216,7 +1358,8 @@ async def search_flights(
             f"{normalized.get('flight_number')}-"
             f"{normalized.get('departure_airport')}-"
             f"{normalized.get('arrival_airport')}-"
-            f"{normalized.get('departure_time')}"
+            f"{normalized.get('departure_time')}-"
+            f"{normalized.get('price')}"
         )
 
         if key in seen:
@@ -1229,25 +1372,54 @@ async def search_flights(
         )
 
     # ========================================================
+    # PRICE INSIGHTS
+    # ========================================================
+
+    price_insights = data.get(
+        "price_insights"
+    )
+
+    if isinstance(
+        price_insights,
+        dict,
+    ):
+
+        lowest_price = price_insights.get(
+            "lowest_price"
+        )
+
+        print(
+            "[serpapi] Lowest price:",
+            lowest_price,
+        )
+
+        print(
+            "[serpapi] Price level:",
+            price_insights.get(
+                "price_level"
+            ),
+        )
+
+    # ========================================================
     # FINAL RESULT
     # ========================================================
 
     print(
-        "[cirium] Final flight count:",
+        "[serpapi] Final flight count:",
         len(results),
     )
 
     if results:
 
         print(
-            "[cirium] First flight:",
+            "[serpapi] First flight:",
             results[0],
         )
 
     else:
 
         print(
-            "[cirium] No scheduled flights returned."
+            "[serpapi] No flights returned."
         )
 
     print("=" * 70)

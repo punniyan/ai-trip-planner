@@ -5,25 +5,116 @@ export interface TripRequest {
 }
 
 export interface Flight {
-  airline?: string;
   flight_number?: string;
+  airline?: string;
+  airline_code?: string;
+
   departure_airport?: string;
   arrival_airport?: string;
+
+  departure_airport_name?: string;
+  arrival_airport_name?: string;
+
   departure_time?: string;
   arrival_time?: string;
-  duration?: string;
-  price?: number;
-  currency?: string;
-}
 
-export interface Hotel {
-  name?: string;
-  address?: string;
-  rating?: number;
-  price_per_night?: number;
+  duration?: number | string;
+  duration_text?: string;
+
+  stops?: number;
+  stops_text?: string;
+
+  price?: number | string;
   currency?: string;
-  total_price?: number;
-  image_url?: string;
+  price_status?: string;
+
+  travelers?: number;
+  travel_class?: string;
+  aircraft?: string;
+
+  airline_logo?: string;
+
+  booking_token?: string;
+  departure_token?: string;
+
+  status?: string;
+  source?: string;
+}
+// export interface Hotel {
+//   name: string;
+//   address?: string | null;
+
+//   image_url?: string | null;
+//   platform?: string | null;
+
+//   rating?: number | null;
+//   property_type?: string | null;
+
+//   amenities?: string[];
+
+//   price_per_night?: number | null;
+//   currency?: string | null;
+
+//   review_count?: number | null;
+
+//   total_price?: number | null;
+//   nights?: number | null;
+
+//   website?: string | null;
+// }
+export interface Hotel {
+  id?: string;
+
+  name?: string;
+
+  address?: string;
+
+  latitude?: number | null;
+
+  longitude?: number | null;
+
+  price_per_night?: number | null;
+
+  total_price?: number | null;
+
+  currency?: string;
+
+  nights?: number | null;
+
+  rating?: number | null;
+
+  rating_scale?: number | null;
+
+  review_count?: number;
+
+  star_rating?: number | null;
+
+  property_type?: string;
+
+  bedrooms?: number | null;
+
+  bathrooms?: number | null;
+
+  max_occupancy?: number | null;
+
+  amenities?: string[];
+
+  platform?: string;
+
+  platform_listing_id?: string;
+
+  website?: string | null;
+
+  // ⭐ StayingAPI hotel image
+  image_url?: string | null;
+
+  host?: {
+    name?: string;
+
+    isSuperhost?: boolean;
+  };
+
+  source?: string;
 }
 
 export interface Restaurant {

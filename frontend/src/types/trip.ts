@@ -18,12 +18,35 @@ export interface Flight {
 
 export interface Hotel {
   name?: string;
+  destination?: string;
   address?: string;
+
+  latitude?: number;
+  longitude?: number;
+  distance?: number;
+
   rating?: number;
+
+  price?: number;
   price_per_night?: number;
-  currency?: string;
   total_price?: number;
+  currency?: string;
+  price_status?: string;
+
+  image?: string;
   image_url?: string;
+
+  website?: string;
+  phone?: string;
+
+  hotel_id?: string;
+  availability?: boolean;
+
+  check_in?: string;
+  check_out?: string;
+  travelers?: number;
+
+  source?: string;
 }
 
 export interface Restaurant {
